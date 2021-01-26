@@ -44,6 +44,9 @@
 
 struct hash *sessions;
 
+// stats, statscount, statssz 是当前文件的全局变量
+// 整个 stats.c 文件相当于一个实例.
+// 在对这 3 个变量进行读/写操作时, 还会通过 stats_mutex 对其进行加锁保护.
 unsigned long *stats;
 unsigned statscount, statssz;
 
@@ -64,16 +67,15 @@ init_stats(void) {
     stats = malloc((statssz = INITIAL_STAT_SZ) * sizeof(unsigned long));
     if (!stats)
         abort();
-    
+
     sessions = hash_new();
     if (!sessions)
         abort();
     
     // Stat cleaner thread
     pthread_create(&clean_thread_id, NULL, clean_thread, NULL);
-    
+
     return 0;
-    
 }
 
 int
@@ -155,25 +157,21 @@ outbound(struct timeval tv, struct in_addr laddr, struct in_addr raddr,
 static int
 lock_stats(void) {
     return pthread_mutex_lock(&stats_mutex);
-    
 }
 
 static int
 unlock_stats(void) {
     return pthread_mutex_unlock(&stats_mutex);
-    
 }
 
 static int
 lock_sessions(void) {
     return pthread_mutex_lock(&sessions_mutex);
-    
 }
 
 static int
 unlock_sessions(void) {
     return pthread_mutex_unlock(&sessions_mutex);
-    
 }
 
 static void *
@@ -216,6 +214,10 @@ struct stats_results {
 static void sort_results(struct stats_results *results);
 int compare_stats(const void *, const void *);
 
+/*
+ * 获取最新的数据信息, 由主调函数将结果打印出来
+ * caller: output.c -> output()
+ */
 struct stats_results *
 get_flush_stats(void) {
     struct stats_results *ret;
@@ -227,6 +229,8 @@ get_flush_stats(void) {
     
     lock_stats();
     
+    // stats, statscount, statssz 是当前文件的全局变量
+    // 整个 stats.c 文件相当于一个实例
     ret->stats = stats;
     ret->statscount = statscount;
     ret->statssz = statssz;
@@ -241,7 +245,6 @@ get_flush_stats(void) {
     unlock_stats();
     
     return ret;
-    
 }
 
 static void
@@ -249,7 +252,6 @@ sort_results(struct stats_results *results) {
     qsort(results->stats, results->statscount, sizeof(unsigned long),
           compare_stats);
     results->sorted = 1;
-    
 }
 
 int
@@ -273,7 +275,6 @@ free_results(struct stats_results *results) {
     free(results);
     
     return 0;
-    
 }
 
 unsigned

@@ -96,6 +96,7 @@ pcap_can_set_rfmon(pcap_t *p)
 }
 
 /*
+ * 要看系统平台是否支持, 默认为不支持, 返回0.
  * For systems where rfmon mode is never supported.
  */
 static int
@@ -181,6 +182,12 @@ pcap_next_ex(pcap_t *p, struct pcap_pkthdr **pkt_header,
 	return (p->read_op(p, 1, pcap_oneshot, (u_char *)&s));
 }
 
+/**
+ * 为 pcap 对象设置默认的成员函数(XXX_not_initialized 等), 待平台/架构确定后, 
+ * 再为其赋予具体的函数.
+ * 
+ * caller: pcap_create_common(), pcap_activate()
+*/
 static void
 initialize_ops(pcap_t *p)
 {
@@ -197,11 +204,6 @@ initialize_ops(pcap_t *p)
 	p->getnonblock_op = (getnonblock_op_t)pcap_not_initialized;
 	p->setnonblock_op = (setnonblock_op_t)pcap_not_initialized;
 	p->stats_op = (stats_op_t)pcap_not_initialized;
-#ifdef WIN32
-	p->setbuff_op = (setbuff_op_t)pcap_not_initialized;
-	p->setmode_op = (setmode_op_t)pcap_not_initialized;
-	p->setmintocopy_op = (setmintocopy_op_t)pcap_not_initialized;
-#endif
 
 	/*
 	 * Default cleanup operation - implementations can override
@@ -217,6 +219,13 @@ initialize_ops(pcap_t *p)
 	p->oneshot_callback = pcap_oneshot;
 }
 
+
+/**
+ * 创建 pcap 对象, 为其申请内存空间, 并为其设置一些默认值(如 timeout, promisc, buffer_size 等).
+ * 
+ * 1. source: 可选值 "any"
+ * caller: pcap-linux.c -> pcap_create()
+ */
 pcap_t *
 pcap_create_common(const char *source, char *ebuf)
 {
@@ -224,21 +233,15 @@ pcap_create_common(const char *source, char *ebuf)
 
 	p = malloc(sizeof(*p));
 	if (p == NULL) {
-		snprintf(ebuf, PCAP_ERRBUF_SIZE, "malloc: %s",
-		    pcap_strerror(errno));
+		snprintf(ebuf, PCAP_ERRBUF_SIZE, "malloc: %s", pcap_strerror(errno));
 		return (NULL);
 	}
 	memset(p, 0, sizeof(*p));
-#ifndef WIN32
-	p->fd = -1;	/* not opened yet */
-	p->selectable_fd = -1;
-	p->send_fd = -1;
-#endif 
 
+	// strdup() 拷贝目标字符串(对于 char* 类型, 使用这个函数是很有必要的)
 	p->opt.source = strdup(source);
 	if (p->opt.source == NULL) {
-		snprintf(ebuf, PCAP_ERRBUF_SIZE, "malloc: %s",
-		    pcap_strerror(errno));
+		snprintf(ebuf, PCAP_ERRBUF_SIZE, "malloc: %s", pcap_strerror(errno));
 		free(p);
 		return (NULL);
 	}
@@ -253,7 +256,7 @@ pcap_create_common(const char *source, char *ebuf)
 
 	initialize_ops(p);
 
-	/* put in some defaults*/
+	// 设置一些默认值.
 	pcap_set_timeout(p, 0);
 	pcap_set_snaplen(p, 65535);	/* max packet size */
 	p->opt.promisc = 0;
@@ -317,6 +320,10 @@ pcap_set_buffer_size(pcap_t *p, int buffer_size)
 	return 0;
 }
 
+/**
+ * 调用针对平台的 activate_op() 成员方法, 设置 pcap 对象中的各种 XXX_op 成员方法(根据不同平台).
+ * caller: pcap_open_live()
+ */
 int
 pcap_activate(pcap_t *p)
 {
@@ -346,12 +353,22 @@ pcap_activate(pcap_t *p)
 	return (status);
 }
 
+/**
+ * 创建 pcap 对象, 按照入参设置其成员选项
+ * 
+ * 1. source: 可选值: "any"
+ * 2. promisc: 是否开启混杂模式
+ * 
+ * caller: src/capture.c -> capture()
+ */
 pcap_t *
 pcap_open_live(const char *source, int snaplen, int promisc, int to_ms, char *errbuf)
 {
 	pcap_t *p;
 	int status;
 
+	// 创建 pcap 对象, 并设置通用选项.
+	// 不管代码提示会将源函数定位到哪个平台文件, linux 平台对应的函数原型就在 pcap-linux.c 中.
 	p = pcap_create(source, errbuf);
 	if (p == NULL)
 		return (NULL);
@@ -410,6 +427,13 @@ pcap_read(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 	return p->read_op(p, cnt, callback, user);
 }
 
+/**
+ * 循环读取网络数据
+ * 
+ * 1. p:        pcap对象(指针类型)
+ * 2. cnt:      循环次数
+ * 3. callback: 回调函数
+ */
 int
 pcap_loop(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 {
@@ -430,12 +454,12 @@ pcap_loop(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
 				n = p->read_op(p, cnt, callback, user);
 			} while (n == 0);
 		}
-		if (n <= 0)
-			return (n);
+
+		if (n <= 0) return (n);
+		
 		if (cnt > 0) {
 			cnt -= n;
-			if (cnt <= 0)
-				return (0);
+			if (cnt <= 0) return (0);
 		}
 	}
 }

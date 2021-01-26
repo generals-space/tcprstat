@@ -58,31 +58,24 @@ process_packet(unsigned char *user, const struct pcap_pkthdr *header,
         ip = (const struct ip *) (packet + sizeof(struct sll_header));
         
         break;
-        
     case DLT_EN10MB:
         ether_header = (struct ether_header *) packet;
         packet_type = ntohs(ether_header->ether_type);
         ip = (const struct ip *) (packet + sizeof(struct ether_header));
         
         break;
-        
     case DLT_RAW:
         packet_type = ETHERTYPE_IP; //This is raw ip
         ip = (const struct ip *) packet;
         
         break;
-        
     default:
-        
         return;
-        
     }
     
-    if (packet_type != ETHERTYPE_IP)
-        return;
+    if (packet_type != ETHERTYPE_IP) return;
     
-    if (capture_file)
-        output_offline_update(header->ts);
+    if (capture_file) output_offline_update(header->ts);
     
     process_ip(pcap, ip, header->ts);
     

@@ -40,6 +40,10 @@ static struct output_options *output_options;
 // Iterations
 unsigned long iterations;
 
+/*
+ * 这个函数并没有得到数据, 只是一个循环而已.
+ * 在被调函数 output() 中, 才有获取数据的步骤, 并且将数据按格式输出
+ */
 void *
 output_thread(void *arg) {
     struct output_options *options;
@@ -49,8 +53,10 @@ output_thread(void *arg) {
     
     options = arg;
     
+    // 将 interval 参数转换格式, 用于作为 nanosleep 的入参
     ts = (struct timespec) { options->interval, 0 };
-    
+
+    // 输出格式检测
     if (!check_format(options->format))
         abort();
     
@@ -59,17 +65,15 @@ output_thread(void *arg) {
             output_header(options->header, 1);
         else
             output_header(options->format, 0);
-        
+
     }
     
-    for (iterations = 0; !options->iterations || iterations < options->iterations;
-            iterations ++)
+    for (iterations = 0; !options->iterations || iterations < options->iterations; iterations ++)
     {
         nanosleep(&ts, NULL);
-        
+
         time(&current);
         output(current, options->format, iterations);
-        
     }
     
     // Iterations finished, signal capturing process
@@ -136,6 +140,10 @@ output_offline_update(struct timeval tv) {
         
 }
 
+/*
+ * 单次打印监测数据
+ * 通过 get_flush_stats() 获取最新信息, 并将结果按照 format 指定的格式输出
+ */
 static int
 output(time_t current, char format[], unsigned long iterations) {
     char *c;

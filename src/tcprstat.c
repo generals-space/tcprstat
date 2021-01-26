@@ -59,6 +59,8 @@ int specified_addresses = 0;
 pthread_t capture_thread_id, output_thread_id;
 
 // Global options
+// program_name 命令行执行时的二进制文件名称
+// 在 tcprstat.h 文件中通过 extern 关键字声明, 可由 libpcap 直接使用...
 char *program_name;
 int port;
 int interval = 30;
@@ -78,11 +80,12 @@ time_t timestamp;
 
 int
 main(int argc, char *argv[]) {
+    // sigaction 来自 signal.h
+    // 貌似还有一个同名的函数, 只不过位置不一样.
     struct sigaction sa;
     char c;
     int option_index = 0;
     
-    // Program name
     program_name = strrchr(argv[0], '/');
     if (program_name)
         program_name ++;
@@ -91,6 +94,7 @@ main(int argc, char *argv[]) {
         
     // Parse command line options
     do {
+        // getopt_long() 来自 getopt.h
         c = getopt_long(argc, argv, short_options, long_options, &option_index);
 
         switch (c) {
@@ -211,26 +215,26 @@ main(int argc, char *argv[]) {
         
     }
     else {
+        // 这里启动了2个线程, 一个读取网卡数据, 一个打印结果
         // Fire up capturing thread
         pthread_create(&capture_thread_id, NULL, capture, NULL);
-        
+
         // Options thread
         pthread_create(&output_thread_id, NULL, output_thread, &output_options);
-        
+
+        // 等待读取线程结束, 则全部结束
         pthread_join(capture_thread_id, NULL);
         pthread_kill(output_thread_id, SIGINT);
-        
+
     }
-        
+
     free_stats();
     free_addresses();
     
     return EXIT_SUCCESS;
-
 }
 
 void
 terminate(int signal) {
     endcapture();
-        
 }

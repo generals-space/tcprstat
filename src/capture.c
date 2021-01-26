@@ -34,12 +34,11 @@ capture(void *arg) {
     char filter[30];
     int r;
 
-    // Second argument 0 stands for non-promiscuous mode
+    // 第3个参数0, 表示不开启混杂模式
     pcap = pcap_open_live("any", CAPTURE_LENGTH, 0, READ_TIMEOUT, errbuf);
     if (!pcap) {
         fprintf(stderr, "pcap: %s\n", errbuf);
         return NULL;
-        
     }
     
     // Capture only TCP
@@ -51,7 +50,6 @@ capture(void *arg) {
     if (pcap_compile(pcap, &bpf, filter, 1, 0)) {
         fprintf(stderr, "pcap: %s\n", pcap_geterr(pcap));
         return NULL;
-        
     }
     
     if (pcap_setfilter(pcap, &bpf)) {
@@ -65,11 +63,9 @@ capture(void *arg) {
     if (r == -1) {
         fprintf(stderr, "pcap: %s\n", pcap_geterr(pcap));
         return NULL;
-        
     }
     
     return NULL;
-    
 }
 
 int

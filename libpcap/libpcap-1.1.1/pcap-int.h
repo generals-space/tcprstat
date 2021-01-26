@@ -296,8 +296,12 @@ struct pcap {
 	/*
 	 * Methods.
 	 */
+	// 设置 pcap 对象的各种 XXX_op 成员方法(针对不同平台)
+	// 在 linux 平台下, 该方法将被赋值为 pcap-linux.c -> pcap_activate_linux() 函数.
+	// 在 pcap-linux.c -> pcap_create() 函数中赋值.
 	activate_op_t activate_op;
 	can_set_rfmon_op_t can_set_rfmon_op;
+	// 在 linux 平台下, 该方法将被赋值为 pcap-linux.c -> pcap_read_linux() 函数.
 	read_op_t read_op;
 	inject_op_t inject_op;
 	setfilter_op_t setfilter_op;

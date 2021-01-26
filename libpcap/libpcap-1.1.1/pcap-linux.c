@@ -357,6 +357,11 @@ static struct sock_fprog	total_fcode
 	= { 1, &total_insn };
 #endif
 
+/*
+ * 调用 pcap_create_common() 创建 pcap 对象, 并且设置其 activate_op 成员方法(linux平台).
+ * 
+ * 1. device: 可选值: "any"
+ */
 pcap_t *
 pcap_create(const char *device, char *ebuf)
 {
@@ -1103,12 +1108,15 @@ static void	pcap_cleanup_linux( pcap_t *handle )
 }
 
 /*
+ * 设置 pcap 对象中的各种 XXX_op 方法(linux 平台)
+ * 
  *  Get a handle for a live capture from the given device. You can
  *  pass NULL as device to get all packages (without link level
  *  information of course). If you pass 1 as promisc the interface
  *  will be set to promiscous mode (XXX: I think this usage should
  *  be deprecated and functions be added to select that later allow
  *  modification of that values -- Torsten).
+ * caller: pcap.c -> pcap_activate() 作为 pcap_t 对象的 activate_op 成员方法被调用
  */
 static int
 pcap_activate_linux(pcap_t *handle)
@@ -1258,6 +1266,13 @@ fail:
 }
 
 /*
+ *
+ * 被赋值为 pcap 对象中的 read_op 成员
+ * 
+ * 3. callback: src/process-packet.c -> process_packet()
+ * 
+ * caller: pcap.c -> pcap_loop() 作为 read_op() 方法被调用.
+ * 
  *  Read at most max_packets from the capture stream and call the callback
  *  for each of them. Returns the number of packets handled or -1 if an
  *  error occured.
@@ -1266,8 +1281,7 @@ static int
 pcap_read_linux(pcap_t *handle, int max_packets, pcap_handler callback, u_char *user)
 {
 	/*
-	 * Currently, on Linux only one packet is delivered per read,
-	 * so we don't loop.
+	 * Currently, on Linux only one packet is delivered per read, so we don't loop.
 	 */
 	return pcap_read_packet(handle, callback, user);
 }
@@ -1609,7 +1623,7 @@ pcap_read_packet(pcap_t *handle, pcap_handler callback, u_char *userdata)
 	callback(userdata, &pcap_header, bp);
 
 	return 1;
-}
+} // pcap_read_packet() 结束
 
 static int
 pcap_inject_linux(pcap_t *handle, const void *buf, size_t size)
@@ -3277,8 +3291,7 @@ pcap_get_ring_frame(pcap_t *handle, int status)
 #endif
 
 static int
-pcap_read_linux_mmap(pcap_t *handle, int max_packets, pcap_handler callback, 
-		u_char *user)
+pcap_read_linux_mmap(pcap_t *handle, int max_packets, pcap_handler callback, u_char *user)
 {
 	int timeout;
 	int pkts = 0;
