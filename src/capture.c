@@ -112,9 +112,11 @@ offline_capture(FILE *fcapture) {
     
 }
 
+/**
+ *
+ * caller: tcprstat.c -> terminate(), output.c -> output_thread() 
+ */
 void
 endcapture(void) {
-    if (pcap)
-        pcap_breakloop(pcap);
-    
+    if (pcap) pcap_breakloop(pcap);
 }

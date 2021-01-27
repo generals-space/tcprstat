@@ -3290,6 +3290,10 @@ pcap_get_ring_frame(pcap_t *handle, int status)
 #define POLLRDHUP 0
 #endif
 
+/**
+ * 
+ * caller: pcap.c -> pcap_loop() 作为 pcap 对象的 read_op 方法被调用. 
+ */
 static int
 pcap_read_linux_mmap(pcap_t *handle, int max_packets, pcap_handler callback, u_char *user)
 {
@@ -3313,34 +3317,26 @@ pcap_read_linux_mmap(pcap_t *handle, int max_packets, pcap_handler callback, u_c
 			timeout = 0;	/* non-blocking mode - poll to pick up errors */
 		do {
 			ret = poll(&pollinfo, 1, timeout);
+			// printf("pcap_read_linux_mmap() poll result %d, revents %d \n", ret, pollinfo.revents);
 			if (ret < 0 && errno != EINTR) {
-				snprintf(handle->errbuf, PCAP_ERRBUF_SIZE, 
-					"can't poll on packet socket: %s",
-					pcap_strerror(errno));
+				snprintf(handle->errbuf, PCAP_ERRBUF_SIZE, "can't poll on packet socket: %s", pcap_strerror(errno));
 				return PCAP_ERROR;
-			} else if (ret > 0 &&
-			    (pollinfo.revents & (POLLHUP|POLLRDHUP|POLLERR|POLLNVAL))) {
+			} else if (ret > 0 && (pollinfo.revents & (POLLHUP|POLLRDHUP|POLLERR|POLLNVAL))) {
 				/*
-				 * There's some indication other than
-				 * "you can read on this descriptor" on
-				 * the descriptor.
+				 * There's some indication other than "you can read on this descriptor" on the descriptor.
 				 */
 				if (pollinfo.revents & (POLLHUP | POLLRDHUP)) {
-					snprintf(handle->errbuf,
-						PCAP_ERRBUF_SIZE,
-						"Hangup on packet socket");
+					snprintf(handle->errbuf, PCAP_ERRBUF_SIZE, "Hangup on packet socket");
 					return PCAP_ERROR;
 				}
 				if (pollinfo.revents & POLLERR) {
 					/*
-					 * A recv() will give us the
-					 * actual error code.
+					 * A recv() will give us the actual error code.
 					 *
 					 * XXX - make the socket non-blocking?
 					 */
-					if (recv(handle->fd, &c, sizeof c,
-					    MSG_PEEK) != -1)
-						continue;	/* what, no error? */
+					/* what, no error? */
+					if (recv(handle->fd, &c, sizeof c, MSG_PEEK) != -1) continue;
 					if (errno == ENETDOWN) {
 						/*
 						 * The device on which we're
@@ -3356,17 +3352,12 @@ pcap_read_linux_mmap(pcap_t *handle, int max_packets, pcap_handler callback, u_c
 							PCAP_ERRBUF_SIZE,
 							"The interface went down");
 					} else {
-						snprintf(handle->errbuf,
-							PCAP_ERRBUF_SIZE, 
-							"Error condition on packet socket: %s",
-							strerror(errno));
+						snprintf(handle->errbuf, PCAP_ERRBUF_SIZE, "Error condition on packet socket: %s", strerror(errno));
 					}
 					return PCAP_ERROR;
 				}
 				if (pollinfo.revents & POLLNVAL) {
-					snprintf(handle->errbuf,
-						PCAP_ERRBUF_SIZE, 
-						"Invalid polling request on packet socket");
+					snprintf(handle->errbuf, PCAP_ERRBUF_SIZE, "Invalid polling request on packet socket");
 					return PCAP_ERROR;
 				}
   			}
@@ -3438,11 +3429,8 @@ pcap_read_linux_mmap(pcap_t *handle, int max_packets, pcap_handler callback, u_c
 		 * the filter when the ring became empty, but it can possibly
 		 * happen a lot later... */
 		bp = (unsigned char*)h.raw + tp_mac;
-		run_bpf = (!handle->md.use_bpf) || 
-			((handle->md.use_bpf>1) && handle->md.use_bpf--);
-		if (run_bpf && handle->fcode.bf_insns && 
-				(bpf_filter(handle->fcode.bf_insns, bp,
-					tp_len, tp_snaplen) == 0))
+		run_bpf = (!handle->md.use_bpf) || ((handle->md.use_bpf>1) && handle->md.use_bpf--);
+		if (run_bpf && handle->fcode.bf_insns && (bpf_filter(handle->fcode.bf_insns, bp, tp_len, tp_snaplen) == 0))
 			goto skip;
 
 		/*

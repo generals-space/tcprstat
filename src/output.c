@@ -75,7 +75,7 @@ output_thread(void *arg) {
         time(&current);
         output(current, options->format, iterations);
     }
-    
+
     // Iterations finished, signal capturing process
     endcapture();
     
