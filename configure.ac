@@ -68,12 +68,13 @@ then
             [Cannot build libpcap without flex. Please install.])
     fi
     
-    # Build our shipped version of libpcap.
-    (cd libpcap && tar xzf libpcap*.tar.gz && cd libpcap*/ &&
-        patch -p1 < ../resolver-patch) || {
-        AC_MSG_ERROR([error unpacking libpcap tar])
-    }
-    
+    ## 注释这一段, 直接维护 libpcap
+    ## # Build our shipped version of libpcap.
+    ## (cd libpcap && tar xzf libpcap*.tar.gz && cd libpcap*/ &&
+    ##     patch -p1 < ../resolver-patch) || {
+    ##     AC_MSG_ERROR([error unpacking libpcap tar])
+    ## }
+
     LIBPCAP_SUBDIR=`echo libpcap/libpcap-*/`
     AC_SUBST(LIBPCAP_SUBDIR)
     
