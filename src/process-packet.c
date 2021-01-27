@@ -37,9 +37,11 @@
 #include "tcprstat.h"
 #include "output.h"
 
-void
-process_packet(unsigned char *user, const struct pcap_pkthdr *header,
-        const unsigned char *packet)
+/**
+ * 
+ * caller: libpcap/pcap.c -> pcap_loop()
+ */
+void process_packet(unsigned char *user, const struct pcap_pkthdr *header, const unsigned char *packet)
 {
     pcap_t *pcap;
     const struct sll_header *sll;
@@ -51,7 +53,7 @@ process_packet(unsigned char *user, const struct pcap_pkthdr *header,
 
     // Parse packet
     switch (pcap_datalink(pcap)) {
-        
+
     case DLT_LINUX_SLL:
         sll = (struct sll_header *) packet;
         packet_type = ntohs(sll->sll_protocol);
@@ -78,11 +80,13 @@ process_packet(unsigned char *user, const struct pcap_pkthdr *header,
     if (capture_file) output_offline_update(header->ts);
     
     process_ip(pcap, ip, header->ts);
-    
 }
 
-int
-process_ip(pcap_t *dev, const struct ip *ip, struct timeval tv) {
+/**
+ * 
+ * caller: process_packet()
+ */
+int process_ip(pcap_t *dev, const struct ip *ip, struct timeval tv) {
     char src[16], dst[16], *addr;
     int incoming;
     unsigned len;
@@ -131,23 +135,17 @@ process_ip(pcap_t *dev, const struct ip *ip, struct timeval tv) {
             rport = sport;
             
             inbound(tv, ip->ip_dst, ip->ip_src, lport, rport);
-            
         }
         else {
             lport = sport;
             rport = dport;
             
             outbound(tv, ip->ip_src, ip->ip_dst, lport, rport);
-            
         }
-
         break;
-        
     default:
         break;
-        
     }
-    
+
     return 0;
-    
 }

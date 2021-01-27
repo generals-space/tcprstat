@@ -25,8 +25,7 @@
 #include <netinet/ip.h>
 #include <pcap.h>
 
-void process_packet(unsigned char *, const struct pcap_pkthdr *,
-                    const unsigned char *);
+void process_packet(unsigned char *, const struct pcap_pkthdr *, const unsigned char *);
 int process_ip(pcap_t *dev, const struct ip *ip, struct timeval tv);
 
 #endif

@@ -224,6 +224,7 @@ static const char rcsid[] _U_ =
   * So we check whether PACKET_HOST is defined, and assume that we have
   * PF_PACKET sockets only if it is defined.
   */
+// PACKET_HOST 宏在 linux/if_packet.h 头文件中有定义
 # ifdef PACKET_HOST
 #  define HAVE_PF_PACKET_SOCKETS
 #  ifdef PACKET_AUXDATA
@@ -235,6 +236,7 @@ static const char rcsid[] _U_ =
  /* check for memory mapped access avaibility. We assume every needed 
   * struct is defined if the macro TPACKET_HDRLEN is defined, because it
   * uses many ring related structs and macros */
+// TPACKET_HDRLEN 宏在 linux/if_packet.h 头文件中有定义
 # ifdef TPACKET_HDRLEN
 #  define HAVE_PACKET_RING
 #  ifdef TPACKET2_HDRLEN
@@ -1109,6 +1111,7 @@ static void	pcap_cleanup_linux( pcap_t *handle )
 
 /*
  * 设置 pcap 对象中的各种 XXX_op 方法(linux 平台)
+ * 如果当前系统内核版本较新, 则会调用 activate_mmap() 注册适用于新版本的 XXX_op 方法
  * 
  *  Get a handle for a live capture from the given device. You can
  *  pass NULL as device to get all packages (without link level
@@ -1118,8 +1121,7 @@ static void	pcap_cleanup_linux( pcap_t *handle )
  *  modification of that values -- Torsten).
  * caller: pcap.c -> pcap_activate() 作为 pcap_t 对象的 activate_op 成员方法被调用
  */
-static int
-pcap_activate_linux(pcap_t *handle)
+static int pcap_activate_linux(pcap_t *handle)
 {
 	const char	*device;
 	int		status = 0;
@@ -1145,16 +1147,14 @@ pcap_activate_linux(pcap_t *handle)
 		if (handle->opt.promisc) {
 			handle->opt.promisc = 0;
 			/* Just a warning. */
-			snprintf(handle->errbuf, PCAP_ERRBUF_SIZE,
-			    "Promiscuous mode not supported on the \"any\" device");
+			snprintf(handle->errbuf, PCAP_ERRBUF_SIZE, "Promiscuous mode not supported on the \"any\" device");
 			status = PCAP_WARNING_PROMISC_NOTSUP;
 		}
 	}
 
 	handle->md.device	= strdup(device);
 	if (handle->md.device == NULL) {
-		snprintf(handle->errbuf, PCAP_ERRBUF_SIZE, "strdup: %s",
-			 pcap_strerror(errno) );
+		snprintf(handle->errbuf, PCAP_ERRBUF_SIZE, "strdup: %s", pcap_strerror(errno) );
 		return PCAP_ERROR;
 	}
 	
@@ -1176,6 +1176,7 @@ pcap_activate_linux(pcap_t *handle)
 	 * trying both methods with the newer method preferred.
 	 */
 
+	// 如果当前系统内核版本较新, 则会调用 activate_mmap() 注册适用于新版本的 XXX_op 方法
 	if ((status = activate_new(handle)) == 1) {
 		/*
 		 * Success.
@@ -1235,8 +1236,7 @@ pcap_activate_linux(pcap_t *handle)
 		if (setsockopt(handle->fd, SOL_SOCKET, SO_RCVBUF,
 		    &handle->opt.buffer_size,
 		    sizeof(handle->opt.buffer_size)) == -1) {
-			snprintf(handle->errbuf, PCAP_ERRBUF_SIZE,
-				 "SO_RCVBUF: %s", pcap_strerror(errno));
+			snprintf(handle->errbuf, PCAP_ERRBUF_SIZE, "SO_RCVBUF: %s", pcap_strerror(errno));
 			status = PCAP_ERROR;
 			goto fail;
 		}
@@ -1277,8 +1277,7 @@ fail:
  *  for each of them. Returns the number of packets handled or -1 if an
  *  error occured.
  */
-static int
-pcap_read_linux(pcap_t *handle, int max_packets, pcap_handler callback, u_char *user)
+static int pcap_read_linux(pcap_t *handle, int max_packets, pcap_handler callback, u_char *user)
 {
 	/*
 	 * Currently, on Linux only one packet is delivered per read, so we don't loop.
@@ -2964,8 +2963,7 @@ activate_new(pcap_t *handle)
 #endif
 }
 
-static int 
-activate_mmap(pcap_t *handle)
+static int activate_mmap(pcap_t *handle)
 {
 #ifdef HAVE_PACKET_RING
 	int ret;
@@ -3263,22 +3261,25 @@ pcap_setnonblock_mmap(pcap_t *p, int nonblock, char *errbuf)
 	return 0;
 }
 
-static inline union thdr *
-pcap_get_ring_frame(pcap_t *handle, int status)
+/**
+ * 
+ * caller:
+ * 1. pcap_read_linux_mmap()
+ * 2. pcap_setfilter_linux_mmap()
+ */
+static inline union thdr * pcap_get_ring_frame(pcap_t *handle, int status)
 {
 	union thdr h;
 
 	h.raw = RING_GET_FRAME(handle);
 	switch (handle->md.tp_version) {
 	case TPACKET_V1:
-		if (status != (h.h1->tp_status ? TP_STATUS_USER :
-						TP_STATUS_KERNEL))
+		if (status != (h.h1->tp_status ? TP_STATUS_USER : TP_STATUS_KERNEL))
 			return NULL;
 		break;
 #ifdef HAVE_TPACKET2
 	case TPACKET_V2:
-		if (status != (h.h2->tp_status ? TP_STATUS_USER :
-						TP_STATUS_KERNEL))
+		if (status != (h.h2->tp_status ? TP_STATUS_USER : TP_STATUS_KERNEL))
 			return NULL;
 		break;
 #endif
@@ -3292,10 +3293,11 @@ pcap_get_ring_frame(pcap_t *handle, int status)
 
 /**
  * 
- * caller: pcap.c -> pcap_loop() 作为 pcap 对象的 read_op 方法被调用. 
+ * 3. callback: 回调函数, 指 src/process-packet.c -> process_packet() 函数.
+ * 
+ * caller: pcap.c -> pcap_loop() 作为 pcap 对象的 read_op() 方法被调用. 
  */
-static int
-pcap_read_linux_mmap(pcap_t *handle, int max_packets, pcap_handler callback, u_char *user)
+static int pcap_read_linux_mmap(pcap_t *handle, int max_packets, pcap_handler callback, u_char *user)
 {
 	int timeout;
 	int pkts = 0;
@@ -3444,21 +3446,18 @@ pcap_read_linux_mmap(pcap_t *handle, int max_packets, pcap_handler callback, u_c
 			 * we'll see the packet as an incoming packet as well,
 			 * and we don't want to see it twice.
 			 */
-			if (sll->sll_ifindex == handle->md.lo_ifindex)
-				goto skip;
+			if (sll->sll_ifindex == handle->md.lo_ifindex) goto skip;
 
 			/*
 			 * If the user only wants incoming packets, reject it.
 			 */
-			if (handle->direction == PCAP_D_IN)
-				goto skip;
+			if (handle->direction == PCAP_D_IN) goto skip;
 		} else {
 			/*
 			 * Incoming packet.
 			 * If the user only wants outgoing packets, reject it.
 			 */
-			if (handle->direction == PCAP_D_OUT)
-				goto skip;
+			if (handle->direction == PCAP_D_OUT) goto skip;
 		}
 
 		/* get required packet info from ring header */
@@ -3567,10 +3566,9 @@ skip:
 		}
 	}
 	return pkts;
-}
+} // pcap_read_linux_mmap 结束
 
-static int 
-pcap_setfilter_linux_mmap(pcap_t *handle, struct bpf_program *filter)
+static int pcap_setfilter_linux_mmap(pcap_t *handle, struct bpf_program *filter)
 {
 	int n, offset;
 	int ret;
@@ -3582,14 +3580,12 @@ pcap_setfilter_linux_mmap(pcap_t *handle, struct bpf_program *filter)
 	 * copying extra data.
 	 */
 	ret = pcap_setfilter_linux_common(handle, filter, 1);
-	if (ret < 0)
-		return ret;
+	if (ret < 0) return ret;
 
 	/* if the kernel filter is enabled, we need to apply the filter on
 	 * all packets present into the ring. Get an upper bound of their number
 	 */
-	if (!handle->md.use_bpf)
-		return ret;
+	if (!handle->md.use_bpf) return ret;
 
 	/* walk the ring backward and count the free slot */
 	offset = handle->offset;

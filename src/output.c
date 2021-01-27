@@ -100,9 +100,8 @@ output_offline_start(struct output_options *options) {
     output_options = options;
 
     iterations = 0;
-    
+
     return 0;
-    
 }
 
 int
@@ -120,24 +119,20 @@ output_offline_update(struct timeval tv) {
                last_output.tv_sec, last_output.tv_usec, next.tv_sec, next.tv_usec,
                tv.tv_sec, tv.tv_usec);*/
                
-    
-        if (tv.tv_sec > next.tv_sec ||
-                (tv.tv_sec == next.tv_sec && tv.tv_usec > next.tv_usec))
+        if (tv.tv_sec > next.tv_sec || (tv.tv_sec == next.tv_sec && tv.tv_usec > next.tv_usec))
         {
             output(next.tv_sec, output_options->format, iterations);
             last_output = next;
-            
             iterations ++;
-            
         }
         else
             break;
         
     }
     while (1);
-    
+
     return 0;
-        
+
 }
 
 /*
@@ -221,13 +216,12 @@ output(time_t current, char format[], unsigned long iterations) {
             
         else
             fputc(c[0], stdout);
-        
-    fflush(stdout);
-    
-    free_results(results);
-    
-    return 0;
 
+    fflush(stdout);
+
+    free_results(results);
+
+    return 0;
 }
 
 static int

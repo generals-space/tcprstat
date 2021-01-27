@@ -27,8 +27,7 @@
 
 pcap_t *pcap;
 
-void *
-capture(void *arg) {
+void * capture(void *arg) {
     struct bpf_program bpf;
     char errbuf[PCAP_ERRBUF_SIZE];
     char filter[30];
@@ -55,7 +54,6 @@ capture(void *arg) {
     if (pcap_setfilter(pcap, &bpf)) {
         fprintf(stderr, "pcap: %s\n", pcap_geterr(pcap));
         return NULL;
-        
     }
     
     // The -1 here stands for "infinity"
@@ -68,8 +66,7 @@ capture(void *arg) {
     return NULL;
 }
 
-int
-offline_capture(FILE *fcapture) {
+int offline_capture(FILE *fcapture) {
     struct bpf_program bpf;
     char errbuf[PCAP_ERRBUF_SIZE];
     char filter[30];
@@ -79,7 +76,6 @@ offline_capture(FILE *fcapture) {
     if (!pcap) {
         fprintf(stderr, "pcap: %s\n", errbuf);
         return 1;
-        
     }
     
     // Capture only TCP
@@ -91,13 +87,11 @@ offline_capture(FILE *fcapture) {
     if (pcap_compile(pcap, &bpf, filter, 1, 0)) {
         fprintf(stderr, "pcap: %s\n", pcap_geterr(pcap));
         return 1;
-        
     }
     
     if (pcap_setfilter(pcap, &bpf)) {
         fprintf(stderr, "pcap: %s\n", pcap_geterr(pcap));
         return 1;
-        
     }
     
     // The -1 here stands for "infinity"
@@ -105,18 +99,15 @@ offline_capture(FILE *fcapture) {
     if (r == -1) {
         fprintf(stderr, "pcap: %s\n", pcap_geterr(pcap));
         return 1;
-        
     }
     
     return 1;
-    
 }
 
 /**
  *
  * caller: tcprstat.c -> terminate(), output.c -> output_thread() 
  */
-void
-endcapture(void) {
+void endcapture(void) {
     if (pcap) pcap_breakloop(pcap);
 }

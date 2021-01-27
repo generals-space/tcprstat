@@ -432,7 +432,11 @@ pcap_read(pcap_t *p, int cnt, pcap_handler callback, u_char *user)
  * 
  * 1. p:        pcap对象(指针类型)
  * 2. cnt:      循环次数
- * 3. callback: 回调函数
+ * 3. callback: 回调函数, 两个主调函数传入的都是 src/process-packet.c -> process_packet() 函数.
+ * 
+ * caller:
+ * 1. src/capture.c -> capture()
+ * 2. src/capture.c -> offline_capture()
  */
 int
 pcap_loop(pcap_t *p, int cnt, pcap_handler callback, u_char *user)

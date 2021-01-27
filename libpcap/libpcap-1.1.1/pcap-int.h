@@ -302,6 +302,7 @@ struct pcap {
 	activate_op_t activate_op;
 	can_set_rfmon_op_t can_set_rfmon_op;
 	// 在 linux 平台下, 该方法将被赋值为 pcap-linux.c -> pcap_read_linux() 函数.
+	// 或者在新版本内核支持下, 会被赋值为 pcap-linux.c -> pcap_read_linux_mmap() 函数.
 	read_op_t read_op;
 	inject_op_t inject_op;
 	setfilter_op_t setfilter_op;
